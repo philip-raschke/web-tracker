@@ -1,31 +1,42 @@
-const express = require("express");
-const app = express();
-const { v4: uuidv4 } = require("uuid");
+const express = require('express');
+const { v4: uuidv4 } = require('uuid');
+const path = require('path');
 const UAParser = require('ua-parser-js');
 
-app.get("/", (req, res) => {
+const app = express();
+const port = 3021;
+
+app.set('trust proxy', true);
+
+app.use((req, res, next) => {
+
+  if (req.url != '/pixel.png') {;
+    return next();
+  }
+
+  let id = (req.headers['if-none-match']) ? req.headers['if-none-match'] : uuidv4();
   const userAgent = req.get('User-Agent');
   const parser = new UAParser(userAgent);
   const result = parser.getResult();
 
-  let etag = req.headers['if-none-match'];
-  if (!etag) {
-    etag = uuidv4();
+  if (!req.headers['if-none-match']) {
+    console.log('New user, assign ID: ' + id);
   }
+  res.set('ETag', id);
 
   console.log(
-    etag, 
+    id, 
     req.headers.referer,
     result.browser.name,
     result.browser.version,
     result.os.name,
     req.ip
   )
-  
-  res.set("ETag", etag);
-  res.send();
+  next();
 });
 
-app.listen(3000, () => {
-  console.log("Server is running on port 3000");
+app.use(express.static(path.join(__dirname, 'img')));
+
+app.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
 });
